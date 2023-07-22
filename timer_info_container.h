@@ -4,20 +4,15 @@
 #include <mutex>
 #include <queue>
 #include <vector>
-#include <functional>
-#include <chrono>
-
-
-using callback_t = std::function<void()>;
-
-using ns_t = std::chrono::nanoseconds;
-using time_point_t = std::chrono::time_point<std::chrono::system_clock, ns_t>;
+#include "./common_types.h"
 
 
 struct TimerInfo {
     time_point_t started;
     ns_t timeout;
     callback_t cb;
+    int callCount;
+    std::size_t id;
 
     bool operator>(const TimerInfo& rhs) const {
         return started + timeout > rhs.started + rhs.timeout;
@@ -33,6 +28,7 @@ public:
     TimerInfoContainer& operator=(const TimerInfoContainer&) = delete;
 
     void push(const TimerInfo &info);
+    bool remove(std::size_t id);
     std::vector<TimerInfo> popReady();
     size_t length();
 

@@ -1,29 +1,51 @@
 #include "./timer_info_container.h"
 
+
 void TimerInfoContainer::push(const TimerInfo &info) {
-    mtx.lock();
+    std::lock_guard<std::mutex> lock(mtx);
     queue.push(info);
-    mtx.unlock();
 }
 
 std::vector<TimerInfo> TimerInfoContainer::popReady() {
+    std::lock_guard<std::mutex> lock(mtx);
     std::vector<TimerInfo> ready;
-    mtx.lock();
     auto now = std::chrono::system_clock::now();
-    auto top = queue.top();
-    while (queue.size() > 0 && top.started + top.timeout <= now)
+    while (queue.size() > 0)
     {
-        ready.push_back(top);
-        queue.pop();
-        top = queue.top();
+        auto top = queue.top();
+        if (top.started + top.timeout <= now) {
+            ready.push_back(top);
+            queue.pop();
+        } else {
+            return ready;
+        }
     }
-    mtx.unlock();
     return ready;
 }
 
 size_t TimerInfoContainer::length() {
-    mtx.lock();
-    size_t len = queue.size();
-    mtx.unlock();
-    return len;
+    std::lock_guard<std::mutex> lock(mtx);
+    return queue.size();
+}
+
+
+bool TimerInfoContainer::remove(std::size_t id) {
+    std::lock_guard<std::mutex> lock(mtx);
+    bool removed = false;
+
+    if (queue.size() > 0) {
+        std::vector<TimerInfo> tmp(queue.size());
+        while (queue.size() > 0 && queue.top().id != id) {
+            tmp.push_back(queue.top());
+            queue.pop();
+        }
+        if (queue.size() > 0) {
+            queue.pop();
+            removed = true;
+        }
+        for (int i = queue.size() - 1; i >= 0; --i) {
+            queue.push(tmp[i]);
+        }
+    }
+    return removed;
 }
