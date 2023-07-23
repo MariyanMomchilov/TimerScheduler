@@ -21,16 +21,19 @@ struct TimerScheduler {
     TimerHandle scheduleRepeat(ns_t interval, int repeatCount, callback_t &&callback);
     bool cancelTimer(TimerHandle &handle);
     void wait();
+    void close();
 
 private:
     void listen();
 
     TimerInfoContainer container;
+    CallbackQueue queue;
+    std::atomic_size_t idSequenceNumber;
+    std::atomic<bool> closed;
+    std::vector<std::atomic_size_t> callbackIds;
     std::vector<std::thread> workerThreads;
     std::thread timersReadyListener;
     std::condition_variable callbackReadyToProcessEvent;
-    std::atomic<std::size_t> idSequenceNumber;
-    CallbackQueue queue;
 };
 
 #endif

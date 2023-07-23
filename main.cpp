@@ -1,4 +1,4 @@
-#include "timer_scheduler.h"
+#include "./timer_scheduler.h"
 #include <iostream>
 
 void thanks() {
@@ -15,7 +15,11 @@ int main() {
     TimerScheduler::TimerHandle h2 = sched.scheduleRepeat(ns_t(4000000000), gracias);
 
     TimerScheduler::TimerHandle h3 = sched.scheduleSingle(ns_t(10000000000), [&sched]() {
-        sched.scheduleSingle(ns_t(1000000000), []() { std::cout << "Thanks 2"; });
+        sched.scheduleSingle(ns_t(1000000000), []() { std::cout << "Thanks again!\n"; });
+    });
+
+    TimerScheduler::TimerHandle h4 = sched.scheduleSingle(ns_t(15000000000), [&sched]() {
+        sched.close();
     });
 
     sched.wait();

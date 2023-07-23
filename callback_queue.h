@@ -12,12 +12,12 @@ struct CallbackQueue {
         callback_t cb;
     };
 
-    std::atomic_flag closed{false};
+    std::atomic<bool> closed{false};
     std::vector<Pair> callbacks;
     std::mutex mtx;
 
     bool pushCallback(std::size_t id, const callback_t &cb);
-    bool removeCallback(std::size_t id);
+    void removeCallback(std::size_t id);
 };
 
 #endif
