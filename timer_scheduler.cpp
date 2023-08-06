@@ -5,31 +5,8 @@
 #include <functional>
 #include "./callback_queue.h"
 #include "./timer_scheduler.h"
+#include "./process_callback_worker.h"
 
-
-void processCallbackWorker(CallbackQueue &queue, std::condition_variable &event, std::atomic_size_t &callbackId) {
-    std::unique_lock<std::mutex> lock(queue.mtx);
-    while(!queue.closed.load(std::memory_order_relaxed)) {
-        if (!lock.owns_lock()) {
-            lock.lock();
-        }
-
-        event.wait(lock, [&queue]() -> bool {
-            return queue.closed.load(std::memory_order_relaxed) || queue.callbacks.size() > 0;
-        });
-
-        if (queue.callbacks.size() > 0) {
-            CallbackQueue::Pair pair = queue.callbacks[0];
-            queue.callbacks.erase(queue.callbacks.begin());
-            callbackId.store(pair.id, std::memory_order_relaxed);
-            lock.unlock();
-            pair.cb();
-            callbackId.store(0, std::memory_order_release);
-        } else {
-            lock.unlock();
-        }
-    }
-}
 
 TimerScheduler::TimerHandle TimerScheduler::scheduleSingle(ns_t timeout, callback_t &&callback) {
     std::size_t id = idSequenceNumber.fetch_add(1, std::memory_order_relaxed);
@@ -37,13 +14,7 @@ TimerScheduler::TimerHandle TimerScheduler::scheduleSingle(ns_t timeout, callbac
     return TimerScheduler::TimerHandle{id};
 }
 
-TimerScheduler::TimerHandle TimerScheduler::scheduleRepeat(ns_t interval, callback_t &&callback) {
-    std::size_t id = idSequenceNumber.fetch_add(1, std::memory_order_relaxed);
-    container.push(TimerInfo{std::chrono::system_clock::now(), interval, callback, -1, id});
-    return TimerScheduler::TimerHandle{id};
-}
-
-TimerScheduler::TimerHandle TimerScheduler::scheduleRepeat(ns_t interval, int repeatCount, callback_t &&callback) {
+TimerScheduler::TimerHandle TimerScheduler::scheduleRepeat(ns_t interval, callback_t &&callback, int repeatCount) {
     std::size_t id = idSequenceNumber.fetch_add(1, std::memory_order_relaxed);
     container.push(TimerInfo{std::chrono::system_clock::now(), interval, callback, repeatCount, id});
     return TimerHandle{id};
@@ -77,15 +48,9 @@ void TimerScheduler::listen() {
             for (TimerInfo& info: readyTimers) {
                 if (!checkIfCurrentlyExecuting(info.id) && queue.pushCallback(info.id, info.cb)) {
                     someReady = true;
-                    if (info.callCount > 0 || info.callCount == -1) {
-                        if (info.callCount > 0) {
-                            --info.callCount;
-                        }
-                        info.started = std::chrono::system_clock::now();
-                        container.push(info);
-                    }
+                    processReadyToExecuteTimerInfo(info);
                 } else {
-                    container.push(info);
+                    processNotReadyToExecuteTimerInfo(info);
                 }
             }
             if (someReady) {
@@ -121,4 +86,19 @@ bool TimerScheduler::cancelTimer(TimerScheduler::TimerHandle &handle) {
         }
     }
     return true;
+}
+
+void TimerScheduler::processReadyToExecuteTimerInfo(TimerInfo &info) {
+    if (info.callCount > 0 || info.callCount == -1) {
+        if (info.callCount > 0) {
+            --info.callCount;
+        }
+        info.started = std::chrono::system_clock::now();
+        container.push(info);
+    }
+}
+
+void TimerScheduler::processNotReadyToExecuteTimerInfo(TimerInfo &info) {
+    info.started = std::chrono::system_clock::now();
+    container.push(info);
 }

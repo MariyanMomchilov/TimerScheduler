@@ -21,7 +21,7 @@ int main() {
     std::vector<TimerScheduler::TimerHandle> handlers;
 
     for (int i = 0; i < 1000; i++) {
-        sched.scheduleRepeat(ns_t(1000000000), 10, calcFib((i + 1) % 40));
+        sched.scheduleRepeat(ns_t(1000000000), calcFib((i + 1) % 40), 10);
     }
 
     sched.wait();
