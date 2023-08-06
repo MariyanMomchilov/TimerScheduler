@@ -43,7 +43,8 @@ void TimerInfoContainer::waitOnEmpty() {
 }
 
 void TimerInfoContainer::close() {
-    closed.store(true, std::memory_order_relaxed);
+    closed.store(true, std::memory_order_release);
+    containerNotEmptyEvent.notify_one();
 }
 
 bool TimerInfoContainer::remove(std::size_t id) {

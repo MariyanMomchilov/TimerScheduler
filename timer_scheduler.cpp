@@ -15,7 +15,7 @@ void processCallbackWorker(CallbackQueue &queue, std::condition_variable &event,
         }
 
         event.wait(lock, [&queue]() -> bool {
-            return queue.callbacks.size() > 0 || queue.closed.load(std::memory_order_relaxed);
+            return queue.closed.load(std::memory_order_relaxed) || queue.callbacks.size() > 0;
         });
 
         if (queue.callbacks.size() > 0) {
@@ -61,10 +61,10 @@ TimerScheduler::TimerScheduler(std::size_t threadCount): workerThreads(threadCou
 }
 
 void TimerScheduler::wait() {
-    timersReadyListener.join();
     for (int i = 0; i < workerThreads.size(); i++) {
         workerThreads[i].join();
     }
+    timersReadyListener.join();
 }
 
 void TimerScheduler::listen() {
@@ -75,7 +75,7 @@ void TimerScheduler::listen() {
             std::vector<TimerInfo> readyTimers = container.popReady();
             bool someReady = false;
             for (TimerInfo& info: readyTimers) {
-                if (queue.pushCallback(info.id, info.cb)) {
+                if (!checkIfCurrentlyExecuting(info.id) && queue.pushCallback(info.id, info.cb)) {
                     someReady = true;
                     if (info.callCount > 0 || info.callCount == -1) {
                         if (info.callCount > 0) {
@@ -92,16 +92,25 @@ void TimerScheduler::listen() {
                 callbackReadyToProcessEvent.notify_all();
             }
         }
-        // notify_all to detach threads if some are sleeping?
+        callbackReadyToProcessEvent.notify_all();
     });
 }
 
 void TimerScheduler::close() {
     closed.store(true, std::memory_order_relaxed);
+    queue.closed.store(true, std::memory_order_release);
     container.close();
-    queue.closed.store(true, std::memory_order_relaxed);
 }
 
+
+bool TimerScheduler::checkIfCurrentlyExecuting(std::size_t id) {
+    for (int i = 0; i < callbackIds.size(); i++) {
+        if (callbackIds[i].load(std::memory_order_relaxed) == id) {
+            return true;
+        }
+    }
+    return false;
+}
 
 bool TimerScheduler::cancelTimer(TimerScheduler::TimerHandle &handle) {
     container.remove(handle.id);

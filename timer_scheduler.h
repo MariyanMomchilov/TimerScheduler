@@ -21,6 +21,7 @@ struct TimerScheduler {
     TimerHandle scheduleRepeat(ns_t interval, int repeatCount, callback_t &&callback);
     bool cancelTimer(TimerHandle &handle);
     void wait();
+    bool checkIfCurrentlyExecuting(std::size_t id);
     void close();
 
 private:
