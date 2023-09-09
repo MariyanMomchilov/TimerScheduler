@@ -24,6 +24,10 @@ int main() {
         sched.scheduleRepeat(ns_t(1000000000), calcFib((i + 1) % 40), 10);
     }
 
+    sched.scheduleSingle(ns_t(11000000000), [&sched]() {
+        sched.close();
+    });
+
     sched.wait();
     return 0;
 }

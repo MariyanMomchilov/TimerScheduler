@@ -6,7 +6,7 @@
 #include "./callback_queue.h"
 #include "./timer_scheduler.h"
 #include "./process_callback_worker.h"
-
+#include <iostream>
 
 TimerScheduler::TimerHandle TimerScheduler::scheduleSingle(ns_t timeout, callback_t &&callback) {
     std::size_t id = idSequenceNumber.fetch_add(1, std::memory_order_relaxed);
@@ -67,6 +67,9 @@ void TimerScheduler::close() {
     container.close();
 }
 
+bool TimerScheduler::isClosed() {
+    return closed.load(std::memory_order_relaxed);
+}
 
 bool TimerScheduler::checkIfCurrentlyExecuting(std::size_t id) {
     for (int i = 0; i < callbackIds.size(); i++) {
@@ -93,6 +96,7 @@ void TimerScheduler::processReadyToExecuteTimerInfo(TimerInfo &info) {
         if (info.callCount > 0) {
             --info.callCount;
         }
+
         info.started = std::chrono::system_clock::now();
         container.push(info);
     }

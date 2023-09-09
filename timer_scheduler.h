@@ -20,19 +20,18 @@ struct TimerScheduler {
     void wait();
     bool checkIfCurrentlyExecuting(std::size_t id);
     void close();
+    bool isClosed();
 
-    virtual TimerHandle scheduleSingle(ns_t timeout, callback_t &&callback);
-    virtual TimerHandle scheduleRepeat(ns_t interval, callback_t &&callback, int repeatCount = -1);
-
-protected:
+    TimerHandle scheduleSingle(ns_t timeout, callback_t &&callback);
+    TimerHandle scheduleRepeat(ns_t interval, callback_t &&callback, int repeatCount = -1);
+private:
     std::atomic_size_t idSequenceNumber;
     TimerInfoContainer container;
     CallbackQueue queue;
 
-    virtual void processReadyToExecuteTimerInfo(TimerInfo &info);
-    virtual void processNotReadyToExecuteTimerInfo(TimerInfo &info);
+    void processReadyToExecuteTimerInfo(TimerInfo &info);
+    void processNotReadyToExecuteTimerInfo(TimerInfo &info);
 
-private:
     void listen();
     std::atomic<bool> closed;
     std::vector<std::atomic_size_t> callbackIds;

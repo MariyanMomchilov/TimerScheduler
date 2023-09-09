@@ -1,8 +1,8 @@
 #include <atomic>
 #include <chrono>
 #include <cassert>
-#include "../common_types.h"
-#include "../timer_scheduler.h"
+#include "../../common_types.h"
+#include "../../timer_scheduler.h"
 #include <iostream>
 
 void executionOrderIsSequential(int threadsCount = 1) {
@@ -21,7 +21,7 @@ void executionOrderIsSequential(int threadsCount = 1) {
     while (counter.load() < 20);
     scheduler.close();
     scheduler.wait();
-    for (int i = 0; i < 19; i++) {
+    for (int i = 0; i < 20; i++) {
         assert(times[i] <= times[i+1]);
     }
 }

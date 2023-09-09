@@ -1,8 +1,8 @@
 #include <atomic>
 #include <chrono>
 #include <cassert>
-#include "../common_types.h"
-#include "../timer_scheduler.h"
+#include "../../common_types.h"
+#include "../../timer_scheduler.h"
 #include <iostream>
 
 void notExecutedBeforeScheduleTime(int threadsCount = 1) {
